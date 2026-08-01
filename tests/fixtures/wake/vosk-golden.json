@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "baseline": "hermes-voice@f3c3689b67807f2fcabfcba0a59f9d34e1456fc7",
+  "model": "vosk-model-fa-0.42",
+  "sample_rate": 16000,
+  "transcripts": {
+    "verify-command-hava.wav": "امروز هوا چطور است",
+    "verify-command-bargard.wav": "برگرد خب که چی می‌گویی",
+    "verify-no-wake-amazon.wav": "نه ولی من خریدیم از آمازون"
+  }
+}

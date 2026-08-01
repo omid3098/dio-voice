@@ -1,0 +1,29 @@
+{
+  "schema": 2,
+  "engine": "porcupine",
+  "engine_version": "1.9.0",
+  "upstream_commit": "9e9790145c481184b07c76b36188b50572e315a6",
+  "keyword": "alexa",
+  "sensitivity": 0.5,
+  "frame_samples": 512,
+  "positive_files": [
+    {
+      "file": "sapi-alexa.wav",
+      "first_trigger_frame": 25
+    },
+    {
+      "file": "sapi-alexa-command-hava.wav",
+      "first_trigger_frame": 25
+    }
+  ],
+  "negative_files": [
+    "no-wake-ghermez.wav",
+    "verify-command-bargard.wav",
+    "verify-command-hava.wav",
+    "verify-no-wake-amazon.wav",
+    "verify-no-wake-bargard.wav",
+    "verify-no-wake-mid-utterance.wav",
+    "verify-no-wake-midanam.wav",
+    "verify-no-wake-motmaenam-zad.wav"
+  ]
+}

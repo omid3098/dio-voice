@@ -1,0 +1,16 @@
+/out/
+/runtime/
+/tools/uv/
+/models/
+/artifacts/
+*.user
+*.obj
+*.exe
+*.lib
+*.pdb
+*.ilk
+*.log
+setup.inf
+setup.rpt
+__pycache__/
+*.pyc

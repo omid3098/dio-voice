@@ -1,0 +1,187 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CUI_COMMIT: 61887068fe3228accb2d5245d08e94f71b2a974b
+  HARNESS_COMMIT: 91057666f4edfd05926645da8943663e8237420d
+
+jobs:
+  metadata:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Verify packaging, locks, licenses and archive safety
+        shell: pwsh
+        run: ./scripts/build-release.ps1 -SelfTest
+      - name: Generate and validate SPDX SBOM
+        shell: pwsh
+        run: |
+          ./scripts/build-release.ps1 -SbomOnly
+          $sbom = Get-Content -Raw out/sbom/sbom.spdx.json | ConvertFrom-Json
+          if ($sbom.spdxVersion -ne 'SPDX-2.3' -or $sbom.packages.Count -lt 2) {
+            throw 'Invalid or empty SPDX SBOM.'
+          }
+          $required = [ordered]@{
+            'vazirmatn-variable-font' = 'OFL-1.1'
+            'lucide-icons' = 'ISC AND MIT'
+          }
+          foreach ($entry in $required.GetEnumerator()) {
+            $package = @($sbom.packages | Where-Object name -eq $entry.Key)
+            if ($package.Count -ne 1 -or
+                $package[0].licenseDeclared -ne $entry.Value -or
+                @($package[0].checksums).Count -ne 1 -or
+                $package[0].checksums[0].algorithm -ne 'SHA256') {
+              throw "Required SPDX package is missing or incomplete: $($entry.Key)"
+            }
+          }
+      - name: Scan current tree and history for secret-shaped values
+        shell: pwsh
+        run: |
+          $pattern = '(^|[^A-Za-z0-9_])(sk-[A-Za-z0-9_-]{20,}|hf_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|ghp_[A-Za-z0-9]{20,})'
+          $current = @(git grep -I -n -E $pattern -- . 2>$null)
+          $history = @(git log --all --format= --no-ext-diff -p -G $pattern -- .)
+          if ($current.Count -or $history.Count) {
+            throw 'Secret-shaped value found in the Git tree or history.'
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: out/sbom/sbom.spdx.json
+
+  windows-x64:
+    needs: metadata
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: omid3098/cui
+          ref: ${{ env.CUI_COMMIT }}
+          path: out/deps/cui
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: omid3098/dio-harness
+          ref: ${{ env.HARNESS_COMMIT }}
+          path: out/deps/dio-harness
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            out/downloads
+            runtime
+            models
+          key: runtime-${{ runner.os }}-${{ hashFiles('metadata/*.lock.json', 'metadata/*.lock.txt') }}
+      - name: Verify pinned application assets and transitive Lucide source
+        shell: pwsh
+        run: |
+          $lock = Get-Content metadata/third-party.lock.json -Raw | ConvertFrom-Json
+          $font = @($lock.dependencies | Where-Object name -eq 'vazirmatn-variable-font')
+          $lucide = @($lock.dependencies | Where-Object name -eq 'lucide-icons')
+          $cuiSource = @($lock.dependencies | Where-Object name -eq 'cui-source')
+          if ($font.Count -ne 1 -or $lucide.Count -ne 1 -or $cuiSource.Count -ne 1 -or
+              $cuiSource[0].version -ne $env:CUI_COMMIT) {
+            throw 'Application dependency locks are missing, ambiguous, or use the wrong CUI commit.'
+          }
+          $fontPath = Join-Path $PWD $font[0].local_file
+          if ((Get-Item -LiteralPath $fontPath).Length -ne [long]$font[0].bytes -or
+              (Get-FileHash -LiteralPath $fontPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $font[0].sha256) {
+            throw 'Bundled Vazirmatn font differs from its immutable source lock.'
+          }
+          $cuiLock = Get-Content out/deps/cui/metadata/third-party.lock.json -Raw | ConvertFrom-Json
+          $cuiLucide = @($cuiLock.dependencies | Where-Object name -eq $lucide[0].transitive_lock_name)
+          if ($cuiLucide.Count -ne 1 -or
+              $cuiLucide[0].version -ne $lucide[0].version -or
+              $cuiLucide[0].revision -ne $lucide[0].source_commit -or
+              $cuiLucide[0].license -ne $lucide[0].license) {
+            throw 'CUI Lucide provenance differs from the DIO transitive lock.'
+          }
+          New-Item -ItemType Directory -Path out/downloads -Force | Out-Null
+          $compiled = Join-Path out/downloads 'cui-lucide-compiled.h'
+          $compiledSpec = "$($env:CUI_COMMIT):$($lucide[0].compiled_file.Replace('\', '/'))"
+          git -C out/deps/cui cat-file blob $compiledSpec > $compiled
+          if ($LASTEXITCODE -ne 0 -or
+              (Get-FileHash -LiteralPath $compiled -Algorithm SHA256).Hash.ToLowerInvariant() -ne
+              $lucide[0].compiled_file_sha256) {
+            throw 'Compiled Lucide geometry differs from the transitive lock.'
+          }
+          $archive = Join-Path out/downloads "lucide-$($lucide[0].source_commit).tar.gz"
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
+            Invoke-WebRequest -UseBasicParsing -Uri $lucide[0].url -OutFile $archive
+          }
+          if ((Get-Item -LiteralPath $archive).Length -ne [long]$lucide[0].bytes -or
+              (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $lucide[0].sha256) {
+            throw 'Lucide source archive failed locked integrity validation.'
+          }
+      - name: Prepare pinned portable runtime
+        shell: pwsh
+        run: |
+          $lock = Get-Content metadata/third-party.lock.json -Raw | ConvertFrom-Json
+          $uv = @($lock.dependencies | Where-Object name -eq "uv-build-tool")
+          if ($uv.Count -ne 1) { throw "uv build-tool lock is missing or ambiguous." }
+          New-Item -ItemType Directory -Path out/tools -Force | Out-Null
+          $wheel = Join-Path out/tools ([IO.Path]::GetFileName($uv[0].url))
+          Invoke-WebRequest -UseBasicParsing -Uri $uv[0].url -OutFile $wheel
+          if ((Get-Item $wheel).Length -ne [long]$uv[0].bytes -or
+              (Get-FileHash $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $uv[0].sha256) {
+            throw "uv wheel failed locked integrity validation."
+          }
+          python -m pip install --disable-pip-version-check --no-deps $wheel
+          ./scripts/bootstrap-runtime.ps1
+          ./scripts/build-release.ps1 -VerifyRuntime
+      - name: Build and install pinned CUI
+        shell: pwsh
+        run: |
+          cmake -S out/deps/cui -B out/build/cui -A x64 -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX="$PWD/out/install/cui"
+          cmake --build out/build/cui --config Release --target install --parallel 2
+      - name: Build and test pinned dio-harness
+        shell: pwsh
+        run: |
+          cmake -S out/deps/dio-harness -B out/build/harness -A x64
+          cmake --build out/build/harness --config Release --parallel 2
+          ctest --test-dir out/build/harness -C Release --output-on-failure
+      - name: Configure and build DIO Voice
+        shell: pwsh
+        run: |
+          cmake -S . -B out/build/ci -A x64 -DDIO_CUI_PREFIX="$PWD/out/install/cui"
+          cmake --build out/build/ci --config Release --parallel 2
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir out/build/ci -C Release --output-on-failure
+      - name: Stage release and verify every payload hash
+        shell: pwsh
+        run: |
+          ./scripts/build-release.ps1 -Version ci -Channel Internal `
+            -BuildDirectory "$PWD/out/build/ci/bin/Release" `
+            -HarnessPath "$PWD/out/build/harness/Release/dio.exe"
+          $release = Resolve-Path out/release/ci
+          $manifest = Get-Content -Raw "$release/release-manifest.json" | ConvertFrom-Json
+          foreach ($component in $manifest.components) {
+            $asset = Join-Path $release ([IO.Path]::GetFileName(([uri]$component.url).AbsolutePath))
+            $item = Get-Item -LiteralPath $asset
+            $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($item.Length -ne [long]$component.bytes -or $hash -ne $component.sha256) {
+              throw "Payload integrity gate failed: $($component.id)"
+            }
+          }
+          Get-Content "$release/SHA256SUMS.txt" | ForEach-Object {
+            $hash, $name = $_ -split '\s+', 2
+            $actual = (Get-FileHash -LiteralPath (Join-Path $release $name) -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $hash) { throw "SHA256SUMS mismatch: $name" }
+          }
+      - name: Gate bootstrap size, self-check and hash
+        shell: pwsh
+        run: |
+          $bootstrap = Resolve-Path out/build/ci/bootstrap/dio-voice.exe
+          $item = Get-Item -LiteralPath $bootstrap
+          if ($item.Length -gt 999999) { throw "Bootstrap is $($item.Length) bytes." }
+          $process = Start-Process -FilePath $bootstrap -ArgumentList '--self-test' -Wait -PassThru -NoNewWindow
+          if ($process.ExitCode -ne 0) { throw 'Bootstrap self-test failed.' }
+          Get-FileHash -LiteralPath $bootstrap -Algorithm SHA256

@@ -1,0 +1,9 @@
+DIO Voice downloads and uses Porcupine 1.9.0 from Picovoice Inc.
+
+Source: https://github.com/Picovoice/porcupine/tree/9e9790145c481184b07c76b36188b50572e315a6
+Copyright 2018-2020 Picovoice Inc.
+License: Apache License 2.0 (see Porcupine-Apache-2.0.txt)
+
+The bundled keyword file recognizes the word "Alexa". Alexa is a trademark
+of Amazon.com, Inc. or its affiliates. DIO Voice is not affiliated with,
+endorsed by, or sponsored by Amazon.

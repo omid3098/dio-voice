@@ -1,0 +1,3 @@
+numpy==1.24.3 --hash=sha256:5342cf6aad47943286afa6f1609cad9b4266a05e7f2ec408e2cf7aea7ff69d80
+onnxruntime==1.28.0 --hash=sha256:0d650aeee29368414367b65529e90afe4bf1bab76254789063b8b2f7ea3013c8
+piper-tts==1.3.0 --hash=sha256:dc6b5be4e15f3c0f4a6067b515bc6202ddf3e2b0c6cbd6c8bdeccab2453c89c7

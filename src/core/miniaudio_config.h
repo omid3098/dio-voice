@@ -1,0 +1,18 @@
+#ifndef DIO_VOICE_MINIAUDIO_CONFIG_H
+#define DIO_VOICE_MINIAUDIO_CONFIG_H
+
+#define MA_ENABLE_ONLY_SPECIFIC_BACKENDS
+#if defined(DIO_MINIAUDIO_NULL_ONLY)
+#define MA_ENABLE_NULL
+#else
+#define MA_ENABLE_WASAPI
+#endif
+#define MA_NO_ENCODING
+#define MA_NO_GENERATION
+#define MA_NO_RESOURCE_MANAGER
+#define MA_NO_NODE_GRAPH
+#define MA_NO_ENGINE
+
+#include "miniaudio.h"
+
+#endif

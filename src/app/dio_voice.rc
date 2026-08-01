@@ -1,0 +1,28 @@
+#include <windows.h>
+#include "resource.h"
+
+1 RT_MANIFEST "dio_voice.manifest"
+
+
+// Stable app mark plus deterministic state-specific tray family.
+DIO_ICON_APP ICON "../../assets/icons/app.ico"
+DIO_ICON_TRAY_LOADING ICON "../../assets/icons/tray-loading.ico"
+DIO_ICON_TRAY_WAITING ICON "../../assets/icons/tray-waiting.ico"
+DIO_ICON_TRAY_LISTENING ICON "../../assets/icons/tray-listening.ico"
+DIO_ICON_TRAY_FOLLOW_UP ICON "../../assets/icons/tray-follow-up.ico"
+DIO_ICON_TRAY_THINKING ICON "../../assets/icons/tray-thinking.ico"
+DIO_ICON_TRAY_SPEAKING ICON "../../assets/icons/tray-speaking.ico"
+DIO_ICON_TRAY_REMINDER ICON "../../assets/icons/tray-reminder.ico"
+DIO_ICON_TRAY_PAUSED ICON "../../assets/icons/tray-paused.ico"
+DIO_ICON_TRAY_ERROR ICON "../../assets/icons/tray-error.ico"
+DIO_ICON_TRAY_LOADING_01 ICON "../../assets/icons/tray-loading-01.ico"
+DIO_ICON_TRAY_LOADING_02 ICON "../../assets/icons/tray-loading-02.ico"
+DIO_ICON_TRAY_LOADING_03 ICON "../../assets/icons/tray-loading-03.ico"
+DIO_ICON_TRAY_LOADING_04 ICON "../../assets/icons/tray-loading-04.ico"
+DIO_ICON_TRAY_LOADING_05 ICON "../../assets/icons/tray-loading-05.ico"
+DIO_ICON_TRAY_LOADING_06 ICON "../../assets/icons/tray-loading-06.ico"
+DIO_ICON_TRAY_LOADING_07 ICON "../../assets/icons/tray-loading-07.ico"
+DIO_ICON_TRAY_LOADING_08 ICON "../../assets/icons/tray-loading-08.ico"
+DIO_ICON_TRAY_LOADING_09 ICON "../../assets/icons/tray-loading-09.ico"
+DIO_ICON_TRAY_LOADING_10 ICON "../../assets/icons/tray-loading-10.ico"
+DIO_ICON_TRAY_LOADING_11 ICON "../../assets/icons/tray-loading-11.ico"

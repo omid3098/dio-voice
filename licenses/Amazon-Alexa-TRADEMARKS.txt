@@ -1,0 +1,6 @@
+Amazon, Alexa, and all related marks are trademarks of Amazon.com, Inc. or
+its affiliates. DIO Voice is not affiliated with or endorsed by Amazon.
+
+This attribution is not a legal-clearance statement. Public distribution of
+the Alexa keyword remains gated on trademark review and the documented wake
+quality thresholds.
